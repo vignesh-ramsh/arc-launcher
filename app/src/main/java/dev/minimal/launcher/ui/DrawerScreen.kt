@@ -1,15 +1,16 @@
 package dev.minimal.launcher.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicTextField
@@ -24,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
@@ -33,13 +35,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.minimal.launcher.data.AppInfo
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DrawerScreen(
     apps: List<AppInfo>,
     pinned: Set<String>,
+    docked: Set<String>,
     onLaunch: (AppInfo) -> Unit,
     onTogglePin: (AppInfo) -> Unit,
+    onToggleDock: (AppInfo) -> Unit,
     onHide: (AppInfo) -> Unit,
     onAppInfo: (AppInfo) -> Unit,
     onUninstall: (AppInfo) -> Unit,
@@ -47,6 +50,7 @@ fun DrawerScreen(
 ) {
     BackHandler(onBack = onClose)
 
+    val settings = LocalSettings.current
     var query by remember { mutableStateOf("") }
     var menuFor by remember { mutableStateOf<AppInfo?>(null) }
     val filtered = remember(apps, query) {
@@ -65,28 +69,36 @@ fun DrawerScreen(
     ) {
         LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
             items(filtered, key = { it.packageName }) { app ->
-                Box {
-                    Text(
-                        text = app.label,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Light,
-                        color = onBackground,
+                Box(Modifier.animateItem()) {
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .combinedClickable(
-                                onClick = { onLaunch(app) },
-                                onLongClick = { menuFor = app },
-                            )
-                            .padding(vertical = 12.dp),
-                    )
+                            .pressable(onLongClick = { menuFor = app }, onClick = { onLaunch(app) })
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (settings.drawerIcons) {
+                            AppIcon(app, 40.dp)
+                            Spacer(Modifier.width(18.dp))
+                        }
+                        Text(
+                            text = app.label,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Light,
+                            color = onBackground,
+                        )
+                    }
                     DropdownMenu(
                         expanded = menuFor == app,
                         onDismissRequest = { menuFor = null },
                     ) {
-                        val isPinned = app.packageName in pinned
                         DropdownMenuItem(
-                            text = { Text(if (isPinned) "Unpin from home" else "Pin to home") },
+                            text = { Text(if (app.packageName in pinned) "Unpin from home" else "Pin to home") },
                             onClick = { onTogglePin(app); menuFor = null },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(if (app.packageName in docked) "Remove from dock" else "Add to dock") },
+                            onClick = { onToggleDock(app); menuFor = null },
                         )
                         DropdownMenuItem(
                             text = { Text("Hide") },
@@ -110,7 +122,7 @@ fun DrawerScreen(
             onValueChange = { query = it },
             singleLine = true,
             textStyle = TextStyle(color = onBackground, fontSize = 20.sp),
-            cursorBrush = SolidColor(onBackground),
+            cursorBrush = SolidColor(LocalAccent.current),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
             keyboardActions = KeyboardActions(onGo = { filtered.firstOrNull()?.let(onLaunch) }),
             modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),

@@ -38,3 +38,20 @@ fun Context.uninstallApp(app: AppInfo) {
 fun Context.openDefaultLauncherSettings() = startSafely(Intent(Settings.ACTION_HOME_SETTINGS))
 
 fun Context.openSystemSettings() = startSafely(Intent(Settings.ACTION_SETTINGS))
+
+fun Context.openSystemWallpaperPicker() =
+    startSafely(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Wallpaper"))
+
+/** Pulls down the notification shade. There is no public API, so this uses reflection. */
+fun Context.expandNotificationShade() {
+    try {
+        val service = getSystemService("statusbar") ?: return
+        Class.forName("android.app.StatusBarManager")
+            .getMethod("expandNotificationsPanel")
+            .invoke(service)
+    } catch (_: ReflectiveOperationException) {
+        // Blocked by this ROM; nothing to do.
+    } catch (_: SecurityException) {
+        // EXPAND_STATUS_BAR was revoked.
+    }
+}
